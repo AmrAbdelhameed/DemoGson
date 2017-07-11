@@ -1,8 +1,14 @@
 package com.example.amr.demogson;
 
+import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
@@ -24,6 +30,11 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.raizlabs.android.dbflow.config.FlowManager;
+import com.raizlabs.android.dbflow.sql.language.Delete;
+import com.raizlabs.android.dbflow.sql.language.Select;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private Gson gson;
     CustomAdapter adapter;
     ListView obj;
+    int REQUEST_PERMISSION = 1;
+    private ProgressDialog dialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +53,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        dialog = new ProgressDialog(MainActivity.this);
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.setMessage("Loading. Please wait...");
+
+        FlowManager.init(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQUEST_PERMISSION);
+            return;
+        }
         obj = (ListView) findViewById(R.id.listView);
 
         requestQueue = Volley.newRequestQueue(getApplicationContext());
@@ -50,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchPosts() {
+        dialog.show();
         StringRequest request = new StringRequest(Request.Method.GET, ENDPOINT, onPostsLoaded, onPostsError);
 
         requestQueue.add(request);
@@ -61,8 +89,28 @@ public class MainActivity extends AppCompatActivity {
 
             Response responses = gson.fromJson(response, Response.class);
 
-            adapter = new CustomAdapter(MainActivity.this, responses.getResults());
+            List<Story> list = (new Select().from(Story.class).queryList());
+
+            if (list.size() > 0) {
+                Delete.table(Story.class);
+            }
+
+            Story n;
+            for (int i = 0; i < responses.getResults().size(); i++) {
+                n = new Story();
+                if (responses.getResults().get(i).getMultimedia().size() > 0) {
+                    n.setTitle(responses.getResults().get(i).getTitle());
+                    n.setPublished_date(responses.getResults().get(i).getPublished_date());
+                    n.setImageurl(responses.getResults().get(i).getMultimedia()
+                            .get(responses.getResults().get(i).getMultimedia().size() / 2).getUrl());
+                    n.save();
+                }
+            }
+
+            adapter = new CustomAdapter(MainActivity.this, list);
             obj.setAdapter(adapter);
+
+            dialog.dismiss();
         }
     };
 
@@ -84,6 +132,12 @@ public class MainActivity extends AppCompatActivity {
                 message = "Connection TimeOut! Please check your internet connection.";
             }
             Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+            List<Story> list = (new Select().from(Story.class).queryList());
+
+            adapter = new CustomAdapter(MainActivity.this, list);
+            obj.setAdapter(adapter);
+
+            dialog.dismiss();
         }
     };
 

@@ -13,11 +13,11 @@ import com.squareup.picasso.Picasso;
 import java.util.List;
 
 public class CustomAdapter extends BaseAdapter {
-    private List<Response.ResultsBean> mMovieitem;
+    private List<Story> mMovieitem;
     private Context mContext;
     private LayoutInflater inflater;
 
-    public CustomAdapter(Context mContext, List<Response.ResultsBean> mMovieitem) {
+    public CustomAdapter(Context mContext, List<Story> mMovieitem) {
         this.mContext = mContext;
         this.mMovieitem = mMovieitem;
     }
@@ -42,17 +42,14 @@ public class CustomAdapter extends BaseAdapter {
         LayoutInflater inflater = (LayoutInflater) mContext
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View rowView = inflater.inflate(R.layout.list_view_layout, parent, false);
-        Response.ResultsBean item = (Response.ResultsBean) getItem(position);
+
         TextView title = (TextView) rowView.findViewById(R.id.title);
         TextView rating = (TextView) rowView.findViewById(R.id.published);
         ImageView thumbnail = (ImageView) rowView.findViewById(R.id.imagevi);
-        if (item.getMultimedia().size()>0)
-        {
-            String imageUrl = item.getMultimedia().get(item.getMultimedia().size()/2).getUrl();
-            Picasso.with(mContext).load(imageUrl).into(thumbnail);
-        }
-        title.setText(item.getTitle());
-        rating.setText(item.getPublished_date());
+
+        title.setText(mMovieitem.get(position).getTitle());
+        rating.setText(mMovieitem.get(position).getPublished_date());
+        Picasso.with(mContext).load(mMovieitem.get(position).getImageurl()).into(thumbnail);
         return rowView;
     }
 }
